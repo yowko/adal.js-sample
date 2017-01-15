@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>sample using ADAL.JS</title>
+    <meta charset="utf-8" />
+    <link href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
+    <script src="https://code.jquery.com/jquery-2.2.4.js"></script>
+    <script src="https://secure.aadcdn.microsoftonline-p.com/lib/1.0.11/js/adal.min.js"></script>
+</head>
+<body>
+    <div class="row">
+        <div class="col-lg-12">
+            <a id="login" class="btn btn-primary">Log in</a> |
+            <a id="logout" class="btn btn-warning">Log out</a>
+        </div>
+        <p id="username"></p>
+        <pre id="result"></pre>
+    </div>
+    <script type="text/javascript">
+        $('#login')
+            .click(function () {
+                authContext.login();
+            });
+        $('#logout')w
+            .click(function () {
+                authContext.logOut();
+            });
+        // Set up ADAL
+        var authContext = new AuthenticationContext({
+            clientId: '{clientId}',
+            postLogoutRedirectUri: window.location
+        });
+        // 取得個人資訊
+        var getCurrentUser = function (access_token) {
+		$('#result').html('Calling API...');
+		$.ajax({
+					url: 'https://graph.microsoft.com/v1.0/me',
+					method: 'GET',
+					headers: {
+						'Authorization': 'Bearer ' + access_token
+					}
+				})
+				.success(function (data) {
+					$('#result')
+						.html(
+							//JSON.stringify(JSON.parse(jqXHR.responseText), null, '  '));
+							JSON.stringify(data, null, '  '));
+				})
+				.error(function(data) {
+					console.log(data);
+					$('#result').html('ERROR:\n\n' + JSON.stringify(data, null, '  '));
+				})
+			;
+		}
+        if (authContext.isCallback(window.location.hash)) {
+			// 處理要求 token 後的回應
+			authContext.handleWindowCallback();
+			var err = authContext.getLoginError();
+			if (err) {
+				$('#result').html('ERROR:\n\n' + err);
+			}
+		} else {
+			// 檢查是否登入
+			var user = authContext.getCachedUser();
+			if (user) {
+				$('#username').html('Signed in as: ' + user.userName);
+				$('#result').html('Getting access token...');
+
+				// 取得可以用來存取 Microsoft Graph API 的 token
+				authContext.acquireToken(
+					'https://graph.microsoft.com',
+					function (error, token) {
+						if (error || !token) {
+							// TODO: Handle error obtaining access token
+							$('#result').html('ERROR:\n\n' + error);
+							return;
+						}
+						// 使用 token 去拿使用者資料
+						getCurrentUser(token);
+					}
+				);
+			} else {
+				$('#username').html('Not signed in.');
+			}
+		}
+    </script>
+</body>
+</html>
